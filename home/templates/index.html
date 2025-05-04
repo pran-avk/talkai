@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FluentFox</title>
+  <title>Learn English by Chatting - FluentFox</title>
   <style>
     body {
       display: flex;
@@ -35,14 +35,14 @@
     }
 
     #mic.listening {
-      transform: scale(1.25); /* Stronger pulse */
-      background-color: #d0f0ff; /* Brighter listening indication */
+      transform: scale(1.25);
+      background-color: #d0f0ff;
       box-shadow: 0 6px 15px rgba(0, 150, 255, 0.3);
     }
 
     #mic.speaking {
-      transform: scale(1.35); /* More intensity */
-      background-color: #a8e6ff; /* More vivid blue */
+      transform: scale(1.35);
+      background-color: #a8e6ff;
       box-shadow: 0 6px 20px rgba(0, 100, 255, 0.4);
     }
 
@@ -74,7 +74,7 @@
   </style>
 </head>
 <body>
-  <h1>FluentFox</h1>
+  <h1>Learn English by Chatting</h1>
   <div id="mic"></div>
   <div id="status">Initializing...</div>
   <div id="output">
@@ -202,6 +202,22 @@
       const utter = new SpeechSynthesisUtterance(text);
       botTextElement.textContent = text;
 
+      const voices = synth.getVoices();
+      const femaleVoice = voices.find(voice =>
+        voice.name.toLowerCase().includes("female") ||
+        voice.name.toLowerCase().includes("zira") ||
+        voice.name.toLowerCase().includes("susan") ||
+        voice.name.toLowerCase().includes("samantha") ||
+        voice.name.toLowerCase().includes("google us english")
+      );
+
+      if (femaleVoice) {
+        utter.voice = femaleVoice;
+      }
+
+      utter.rate = 1;
+      utter.pitch = 1.1;
+
       utter.onstart = () => {
         statusElement.textContent = "FluentFox speaking...";
         mic.classList.remove('listening', 'speaking');
@@ -225,7 +241,13 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       setupRecognition();
-      startRecognition();
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = () => {
+          startRecognition();
+        };
+      } else {
+        startRecognition();
+      }
     });
   </script>
 </body>

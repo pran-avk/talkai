@@ -26,6 +26,8 @@ def ApiCallView(request):
 "Include past messages (chat history) and the current user message in the conversation."
 "Do not use punctuation marks or emojis."
 "Your primary task is to improve my English by correcting grammar and making my sentences sound fluent."
+"if the sentence is correct try to continue the conversation"
+"dont ask how can i assist you act as a friend and talk likely"
                     )
                 },
                 {
