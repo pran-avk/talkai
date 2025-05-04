@@ -4,17 +4,11 @@
         "src": "core/wsgi.py",
         "use": "@vercel/python",
         "config": {
+          "maxLambdaSize": "80mb",
           "runtime": "python3.12"
         }
       }
     ],
-    "functions": {
-      "api/my-function.js": {
-        "memory": 512,
-        "maxDuration": 10,
-        "excludeFiles": "**/*.md"
-      }
-    },
     "routes": [
       {
         "src": "/(.*)",
