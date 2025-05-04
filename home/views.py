@@ -1,9 +1,12 @@
 from django.conf import settings
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from together import Together
 import re
 
+@csrf_exempt
 @api_view(['POST'])
 def ApiCallView(request):
     try:
@@ -20,8 +23,8 @@ def ApiCallView(request):
                     "role": "system",
                     "content": (
                         "You're a human-like AI assistant. Respond emotionally and naturally, with expressions like 'aww', max 20 words. "
-            "The following conversation includes past messages (chat history) and the current user message."
-            "do not include signs"
+                        "The following conversation includes past messages (chat history) and the current user message. "
+                        "Do not include signs."
                     )
                 },
                 {
@@ -39,3 +42,6 @@ def ApiCallView(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+def webpage(request):
+    return render(request, 'index.html')
