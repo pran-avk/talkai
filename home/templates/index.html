@@ -9,114 +9,224 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
+      padding-top: 5vh;
+      min-height: 100vh;
+      box-sizing: border-box;
       background-color: #f9f9f9;
       font-family: Arial, sans-serif;
     }
+
     h1 {
       font-size: 2rem;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
+      color: #333;
     }
+
     #mic {
       width: 3cm;
       height: 3cm;
       border-radius: 50%;
       background-color: white;
-      transition: all 0.1s ease-in-out;
+      border: 1px solid #ccc;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+      cursor: pointer;
+      margin-bottom: 2rem;
+    }
+
+    #mic.listening {
+      transform: scale(1.25); /* Stronger pulse */
+      background-color: #d0f0ff; /* Brighter listening indication */
+      box-shadow: 0 6px 15px rgba(0, 150, 255, 0.3);
+    }
+
+    #mic.speaking {
+      transform: scale(1.35); /* More intensity */
+      background-color: #a8e6ff; /* More vivid blue */
+      box-shadow: 0 6px 20px rgba(0, 100, 255, 0.4);
+    }
+
+    #output {
+      margin-top: 1rem;
+      width: 80%;
+      max-width: 600px;
+      text-align: left;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      min-height: 100px;
+    }
+
+    #output p {
+      margin: 0.5em 0;
+      line-height: 1.5;
+      color: #333;
+      font-size: 1rem;
+    }
+
+    #status {
+      margin-top: 1rem;
+      font-style: italic;
+      color: #666;
+      height: 1.2em;
     }
   </style>
 </head>
 <body>
   <h1>FluentFox</h1>
   <div id="mic"></div>
+  <div id="status">Initializing...</div>
+  <div id="output">
+    <p id="user-text"></p>
+    <p id="bot-text"></p>
+  </div>
 
   <script>
-    let recognition;
-    let isSpeaking = false;
-    let silenceTimer;
-    let history = [];
     const mic = document.getElementById('mic');
+    const userTextElement = document.getElementById('user-text');
+    const botTextElement = document.getElementById('bot-text');
+    const statusElement = document.getElementById('status');
 
-    function startRecognition() {
+    let recognition;
+    let conversationHistory = [];
+    const synth = window.speechSynthesis;
+
+    function setupRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        statusElement.textContent = "Speech Recognition not supported.";
+        mic.style.backgroundColor = 'lightcoral';
+        return;
+      }
+
       recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
-      recognition.onstart = () => console.log("Voice recognition started");
+      recognition.onstart = () => {
+        statusElement.textContent = "Listening...";
+        mic.classList.add('listening');
+      };
 
       recognition.onresult = (event) => {
-        const result = Array.from(event.results)
-          .map(r => r[0].transcript)
-          .join('');
+        let finalTranscript = '';
 
-        if (result.trim()) {
-          isSpeaking = true;
-          mic.style.transform = "scale(1.5)";
-          mic.style.backgroundColor = "lightblue";
-          clearTimeout(silenceTimer);
-          silenceTimer = setTimeout(() => {
-            isSpeaking = false;
-            mic.style.transform = "scale(1)";
-            mic.style.backgroundColor = "white";
-            handleText(result.trim());
-          }, 3000);
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          }
+        }
+
+        const processed = finalTranscript.trim();
+        if (processed) {
+          mic.classList.remove('listening');
+          mic.classList.add('speaking');
+          statusElement.textContent = "Processing...";
+          handleText(processed);
         }
       };
 
       recognition.onend = () => {
-        if (!isSpeaking) startRecognition();
+        mic.classList.remove('listening', 'speaking');
+        if (!synth.speaking) {
+          statusElement.textContent = "Stopped listening.";
+        }
       };
 
-      recognition.start();
+      recognition.onerror = (event) => {
+        statusElement.textContent = `Error: ${event.error}`;
+        mic.style.backgroundColor = 'lightcoral';
+      };
+    }
+
+    function startRecognition() {
+      if (!recognition) {
+        setupRecognition();
+        if (!recognition) return;
+      }
+      if (synth.speaking) return;
+      try {
+        statusElement.textContent = "Starting recognition...";
+        recognition.start();
+      } catch (e) {
+        statusElement.textContent = "Already listening.";
+      }
     }
 
     async function handleText(text) {
-      history.push({ role: "user", content: text });
+      userTextElement.textContent = text;
+      botTextElement.textContent = "...";
+      statusElement.textContent = "Sending to FluentFox...";
+
+      conversationHistory.push({ role: "user", content: text });
 
       const payload = {
-        message: `history: ${history.map(h => h.content).slice(0, -1).join(" ")} , current: ${text}`
+        message: `history: ${conversationHistory.map(h => h.content).slice(0, -1).join(" ")} , current: ${text}`
       };
 
-      
-      const response = await fetch("/call/", { // API
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const response = await fetch("/call/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
 
-      const data = await response.json();
-      const reply = data.response;
-      history.push({ role: "bot", content: reply });
+        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
 
-      speak(reply);
+        const data = await response.json();
+        const reply = data.response;
+
+        if (reply) {
+          conversationHistory.push({ role: "bot", content: reply });
+          speak(reply);
+        } else {
+          throw new Error("Empty reply");
+        }
+      } catch (err) {
+        statusElement.textContent = "Error getting response.";
+        speak("Sorry, an error occurred.");
+      } finally {
+        mic.classList.remove('speaking');
+      }
     }
 
-    let synth = window.speechSynthesis;
     function speak(text) {
       if (synth.speaking) synth.cancel();
+      if (recognition) recognition.abort();
 
       const utter = new SpeechSynthesisUtterance(text);
+      botTextElement.textContent = text;
+
       utter.onstart = () => {
-        recognition.abort();
+        statusElement.textContent = "FluentFox speaking...";
+        mic.classList.remove('listening', 'speaking');
       };
 
       utter.onend = () => {
+        statusElement.textContent = "Finished speaking.";
         startRecognition();
       };
 
-      window.onmousedown = () => {
-        if (synth.speaking) synth.cancel();
+      utter.onerror = () => {
+        statusElement.textContent = "Speech error.";
+        startRecognition();
       };
+
+      window.addEventListener('mousedown', () => synth.cancel(), { once: true });
+      window.addEventListener('touchstart', () => synth.cancel(), { once: true });
 
       synth.speak(utter);
     }
 
-    startRecognition();
+    document.addEventListener('DOMContentLoaded', () => {
+      setupRecognition();
+      startRecognition();
+    });
   </script>
 </body>
 </html>
