@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['.netlify.app']
+ALLOWED_HOSTS = ['talkai.onrender.com']
 
 
 # Application definition
